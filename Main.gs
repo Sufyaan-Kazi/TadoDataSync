@@ -4,7 +4,7 @@ const CONFIG = {
   CLIENT_ID: PropertiesService.getScriptProperties().getProperty("CLIENT_ID"),
   INITIAL_REFRESH_TOKEN: PropertiesService.getScriptProperties().getProperty("INITIAL_REFRESH_TOKEN"),
 
-  HISTORY_LIMIT_DATE: "2024-01-28",
+  HISTORY_LIMIT_DATE: Utilities.formatDate(new Date(new Date().setDate(new Date().getDate() - 30)), "GMT+1", "yyyy-MM-dd"),
   DAYS_PER_HISTORY_BATCH: 15, // ANYTHING FROM 10-30
   TIMEZONE: "GMT+1",
   DATE_FORMAT: "yyyy-MM-dd",
@@ -25,17 +25,16 @@ function dailySync() {
 
   const zoneList = getZones(`${CONFIG.HOME_ID}`, headers);
 
-  //const zoneList = Array.isArray(zones) ? zones : (zones.zones || Object.values(zones));
-  //zoneList.sort((a, b) => a.id - b.id);
+  // Wipe any partial data for yesterday before we start
+  const yesterday = new Date(new Date().getTime() - 24 * 60 * 60 * 1000);
+  const dateStr = Utilities.formatDate(yesterday, CONFIG.TIMEZONE, CONFIG.DATE_FORMAT);
+  clearDataForDate(dateStr);
 
   //skip zone 0 (hot water)
   for (let i = 1; i < zoneList.length; i++) {
     let zoneId = zoneList[i].id;
     let zoneName = zoneList[i].name;
-    console.log("Zone: " + zoneId + " -> " + zoneName);
-
-    const yesterday = new Date(new Date().getTime() - 24 * 60 * 60 * 1000);
-    const dateStr = Utilities.formatDate(yesterday, CONFIG.TIMEZONE, CONFIG.DATE_FORMAT);
+    //console.log("Zone: " + zoneId + " -> " + zoneName);
 
     console.log("Starting dailySync for date: " + dateStr); // <--- ADDED THIS
     processAndSave(dateStr, "TOP", accessToken, zoneId, zoneName);
@@ -61,25 +60,26 @@ function historicalSync() {
   const accessToken = getAccessToken();
   const headers = { 'Authorization': 'Bearer ' + accessToken };
 
-  const zones = getZones(`${CONFIG.HOME_ID}`, headers);
-  const zoneList = Array.isArray(zones) ? zones : (zones.zones || Object.values(zones));
+  const zoneList = getZones(`${CONFIG.HOME_ID}`, headers);
   console.log("Starting historical recovery backwards from: " + lastDate.toDateString());
+
+  // Wipe any partial data for yesterday before we start
+  const dateStr = Utilities.formatDate(lastDate, CONFIG.TIMEZONE, CONFIG.DATE_FORMAT);
+  clearDataForDate(dateStr);
 
   // 1. OUTER LOOP: Days
   for (let dayIndex = 0; dayIndex < CONFIG.DAYS_PER_HISTORY_BATCH; dayIndex++) {
-    if (lastDate < limitDate) {
-      console.log("✅ History completed up to the defined limit.");
-      break;
-    }
-
-    const dateStr = Utilities.formatDate(lastDate, CONFIG.TIMEZONE, CONFIG.DATE_FORMAT);
+    //if (lastDate < limitDate) {
+    //  console.log("✅ History (" + lastDate + ") completed up to the defined limit (" + limitDate + ").");
+    //  break;
+    //}
 
     // 2. INNER LOOP: Process every zone for this specific date (except Hot Water - Zone 0)
     for (let z = 1; z < zoneList.length; z++) {
       let zoneId = zoneList[z].id;
       let zoneName = zoneList[z].name;
 
-      console.log("Zone: " + zoneId + " -> " + zoneName);
+      //console.log("Zone: " + zoneId + " -> " + zoneName);
 
       try {
         processAndSave(dateStr, "HIST", accessToken, zoneId, zoneName);
@@ -142,7 +142,8 @@ function processAndSave(dateStr, mode, token, zoneId, zoneName) {
         wM?.value?.state ?? "N/A",                // <--- PROTECTION HERE
         mode
       ];
-    });
+    })
+    .filter(row => row[7] !== "NONE"); // <--- Drop rows without heat demand
 
   if (unifiedRows.length > 0) {
     saveToSheet(ss, "Measured Data", ["ZONE ID", "ZONE NAME", "DATE", "TIME", "TEMP (C)", "HUM %", "SETPOINT", "HEATING", "EXT TEMP", "SOLAR %", "WEATHER", "SOURCE"], unifiedRows);
@@ -368,5 +369,69 @@ function getZones(homeId, headers) {
   const zoneList = Array.isArray(zones) ? zones : (zones.zones || Object.values(zones));
   zoneList.sort((a, b) => a.id - b.id);
 
+  const textLog = zoneList.map(z => `Zone ${z.id} -> ${z.name}`);
+  console.log(textLog.join("\n"));
+
   return zoneList;
+}
+
+/**
+ * Wipes all existing data for a specific date to prevent duplicates
+ */
+function clearDataForDate(targetDateStr) {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const sheets = ["Measured Data", "Settings", "Call For Heat", "Weather"];
+
+  sheets.forEach(name => {
+    const sheet = ss.getSheetByName(name);
+    if (!sheet) return; // Skip if sheet doesn't exist yet
+
+    const lastRow = sheet.getLastRow();
+    if (lastRow <= 1) return;
+
+    const dateCol = (name === "Weather") ? 1 : 3;
+    const dates = sheet.getRange(2, dateCol, lastRow - 1, 1).getValues();
+
+    let deleteBlocks = [];
+    let currentBlock = null;
+
+    // Iterate backwards to safely collect row numbers for deletion
+    for (let i = dates.length - 1; i >= 0; i--) {
+      let val = dates[i][0];
+      let rowDateStr = "";
+
+      if (val instanceof Date) {
+        rowDateStr = Utilities.formatDate(val, CONFIG.TIMEZONE, CONFIG.DATE_FORMAT);
+      } else if (val) {
+        rowDateStr = String(val).substring(0, 10); // Extract YYYY-MM-DD
+      }
+
+      if (rowDateStr === targetDateStr) {
+        let rowNum = i + 2;
+        if (!currentBlock) {
+          currentBlock = { start: rowNum, count: 1 };
+        } else {
+          // Extend block upwards
+          if (rowNum === currentBlock.start - 1) {
+            currentBlock.start = rowNum;
+            currentBlock.count++;
+          } else {
+            deleteBlocks.push(currentBlock);
+            currentBlock = { start: rowNum, count: 1 };
+          }
+        }
+      } else {
+        if (currentBlock) {
+          deleteBlocks.push(currentBlock);
+          currentBlock = null;
+        }
+      }
+    }
+    if (currentBlock) deleteBlocks.push(currentBlock);
+
+    // Execute all identified block deletions for this sheet
+    deleteBlocks.forEach(block => {
+      sheet.deleteRows(block.start, block.count);
+    });
+  });
 }
