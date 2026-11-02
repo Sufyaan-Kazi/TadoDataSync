@@ -3,7 +3,7 @@
 
 This project allows you to automatically capture every temperature change, boiler request, and weather fluctuation directly into a Google Spreadsheet.
 
-Note: This is a fork of the original project, where I have added multi-zone support and translated error messages from Spanish to English. Many thanks theotocopulitos for the original work in creating the base script :)
+Note: This is a fork of the original project https://github.com/theotocopulitos/TadoDataSync, where I have added multi-zone support and translated error messages from Spanish to English. Many thanks theotocopulitos for the original work in creating the base script :)
 
 ---
 
