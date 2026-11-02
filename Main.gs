@@ -23,9 +23,10 @@ function dailySync() {
     'Authorization': 'Bearer ' + accessToken
   };
 
-  const zones = getZones(`${CONFIG.HOME_ID}`, headers);
+  const zoneList = getZones(`${CONFIG.HOME_ID}`, headers);
 
-  const zoneList = Array.isArray(zones) ? zones : (zones.zones || Object.values(zones));
+  //const zoneList = Array.isArray(zones) ? zones : (zones.zones || Object.values(zones));
+  //zoneList.sort((a, b) => a.id - b.id);
 
   //skip zone 0 (hot water)
   for (let i = 1; i < zoneList.length; i++) {
@@ -362,5 +363,10 @@ function getZones(homeId, headers) {
 
   //console.log("Status Code: " + response.getResponseCode());
   //console.log("Error Details: " + response.getContentText());
-  return JSON.parse(response.getContentText());
+  const zones = JSON.parse(response.getContentText());
+
+  const zoneList = Array.isArray(zones) ? zones : (zones.zones || Object.values(zones));
+  zoneList.sort((a, b) => a.id - b.id);
+
+  return zoneList;
 }
