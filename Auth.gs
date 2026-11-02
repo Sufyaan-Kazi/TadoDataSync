@@ -3,10 +3,10 @@
  */
 
 const AUTH_CONFIG = {
-  CLIENT_ID: "1bb50063-6b0c-4d11-bd99-387f4a91cc46", 
+  CLIENT_ID: PropertiesService.getScriptProperties().getProperty("CLIENT_ID"), 
   SCOPE: "home.user offline_access",
   // PASTE THE CODE FROM STEP 1 HERE:
-  DEVICE_CODE: "PASTE_YOUR_CODE_HERE_FROM_STEP_1" 
+  DEVICE_CODE: PropertiesService.getScriptProperties().getProperty("DEVICE_CODE") 
 };
 
 /**

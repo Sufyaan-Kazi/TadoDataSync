@@ -46,65 +46,50 @@ function dailySync() {
  */
 function historicalSync() {
   const props = PropertiesService.getScriptProperties();
-
-  // If no date is saved, start from "the day before yesterday"
   let lastDateStr = props.getProperty("LAST_PROCESSED_DATE");
   let lastDate;
 
   if (!lastDateStr) {
-    // The day before yesterday
     lastDate = new Date();
     lastDate.setDate(lastDate.getDate() - 2);
   } else {
     lastDate = new Date(lastDateStr);
   }
 
-  // Historical limit (the oldest date we want to recover)
   const limitDate = new Date(CONFIG.HISTORY_LIMIT_DATE);
-
-  // 1. The script gets the fresh access token
   const accessToken = getAccessToken();
-
-  // 2. The script builds the headers
-  const headers = {
-    'Authorization': 'Bearer ' + accessToken
-  };
+  const headers = { 'Authorization': 'Bearer ' + accessToken };
 
   const zones = getZones(`${CONFIG.HOME_ID}`, headers);
   const zoneList = Array.isArray(zones) ? zones : (zones.zones || Object.values(zones));
   console.log("Starting historical recovery backwards from: " + lastDate.toDateString());
 
-  //skip zone 0 (hot water)
-  for (let i = 1; i < zoneList.length; i++) {
-    let zoneId = zoneList[i].id;
-    let zoneName = zoneList[i].name;
-    console.log("Zone: " + zoneId + " -> " + zoneName);
+  // 1. OUTER LOOP: Days
+  for (let dayIndex = 0; dayIndex < CONFIG.DAYS_PER_HISTORY_BATCH; dayIndex++) {
+    if (lastDate < limitDate) {
+      console.log("✅ History completed up to the defined limit.");
+      break;
+    }
 
+    const dateStr = Utilities.formatDate(lastDate, CONFIG.TIMEZONE, CONFIG.DATE_FORMAT);
 
+    // 2. INNER LOOP: Process every zone for this specific date (except Hot Water - Zone 0)
+    for (let z = 1; z < zoneList.length; z++) {
+      let zoneId = zoneList[z].id;
+      let zoneName = zoneList[z].name;
 
-
-    for (let i = 0; i < CONFIG.DAYS_PER_HISTORY_BATCH; i++) {
-      // If we have reached the historical limit date, stop
-      if (lastDate < limitDate) {
-        console.log("✅ History completed up to the defined limit.");
-        break;
-      }
-
-      const dateStr = Utilities.formatDate(lastDate, CONFIG.TIMEZONE, CONFIG.DATE_FORMAT);
+      console.log("Zone: " + zoneId + " -> " + zoneName);
 
       try {
         processAndSave(dateStr, "HIST", accessToken, zoneId, zoneName);
-
-        // SUBTRACT one day to move backwards in time
-        lastDate.setDate(lastDate.getDate() - 1);
-
-        // Save the next date to process
-        props.setProperty("LAST_PROCESSED_DATE", Utilities.formatDate(lastDate, CONFIG.TIMEZONE, CONFIG.DATE_FORMAT));
       } catch (e) {
-        console.error("❌ Error processing " + dateStr + ": " + e.message);
-        break;
+        console.error("❌ Error processing " + dateStr + " for " + zoneName + ": " + e.message);
       }
     }
+
+    // 3. Move back one day AFTER all zones are finished
+    lastDate.setDate(lastDate.getDate() - 1);
+    props.setProperty("LAST_PROCESSED_DATE", Utilities.formatDate(lastDate, CONFIG.TIMEZONE, CONFIG.DATE_FORMAT));
   }
 }
 
