@@ -4,8 +4,7 @@ const CONFIG = {
   CLIENT_ID: PropertiesService.getScriptProperties().getProperty("CLIENT_ID"),
   INITIAL_REFRESH_TOKEN: PropertiesService.getScriptProperties().getProperty("INITIAL_REFRESH_TOKEN"),
 
-  HISTORY_LIMIT_DATE: Utilities.formatDate(new Date(new Date().setDate(new Date().getDate() - 30)), "GMT+1", "yyyy-MM-dd"),
-  DAYS_PER_HISTORY_BATCH: 15, // ANYTHING FROM 10-30
+  DAYS_PER_HISTORY_BATCH: 5, // ANYTHING FROM 10-30
   TIMEZONE: "GMT+1",
   DATE_FORMAT: "yyyy-MM-dd",
   TIME_FORMAT: "HH:mm:ss"
@@ -46,51 +45,51 @@ function dailySync() {
  */
 function historicalSync() {
   const props = PropertiesService.getScriptProperties();
+  const HISTORY_LIMIT_DATE = Utilities.formatDate(new Date(new Date().setDate(new Date().getDate() - CONFIG.DAYS_PER_HISTORY_BATCH)), "GMT+1", "yyyy-MM-dd");
   let lastDateStr = props.getProperty("LAST_PROCESSED_DATE");
-  let lastDate;
+  const limitDate = new Date(HISTORY_LIMIT_DATE);
+  console.log("LAST_PROCESSED_DATE: " + lastDateStr + ", HISTORY_LIMIT_DATE:" + limitDate);
 
-  if (!lastDateStr) {
-    lastDate = new Date();
-    lastDate.setDate(lastDate.getDate() - 2);
+  let lastDate;
+  if (!lastDateStr || lastDateStr == null) {
+    lastDate = new Date(limitDate.toDateString());
   } else {
     lastDate = new Date(lastDateStr);
   }
+  if (lastDate < limitDate) {
+    lastDate = limitDate;
+  }
+  //console.log("LAST_DATE: " + lastDate.toDateString());
 
-  const limitDate = new Date(CONFIG.HISTORY_LIMIT_DATE);
   const accessToken = getAccessToken();
   const headers = { 'Authorization': 'Bearer ' + accessToken };
-
   const zoneList = getZones(`${CONFIG.HOME_ID}`, headers);
-  console.log("Starting historical recovery backwards from: " + lastDate.toDateString());
-
-  // Wipe any partial data for yesterday before we start
-  const dateStr = Utilities.formatDate(lastDate, CONFIG.TIMEZONE, CONFIG.DATE_FORMAT);
-  clearDataForDate(dateStr);
+  console.log("Starting historical recovery");
 
   // 1. OUTER LOOP: Days
   for (let dayIndex = 0; dayIndex < CONFIG.DAYS_PER_HISTORY_BATCH; dayIndex++) {
-    //if (lastDate < limitDate) {
-    //  console.log("✅ History (" + lastDate + ") completed up to the defined limit (" + limitDate + ").");
-    //  break;
-    //}
+
+    // Wipe any partial data for yesterday before we start
+    const dateStr = Utilities.formatDate(lastDate, CONFIG.TIMEZONE, CONFIG.DATE_FORMAT);
 
     // 2. INNER LOOP: Process every zone for this specific date (except Hot Water - Zone 0)
     for (let z = 1; z < zoneList.length; z++) {
+    //for (let z = 1; z < 2; z++) {
       let zoneId = zoneList[z].id;
       let zoneName = zoneList[z].name;
 
-      //console.log("Zone: " + zoneId + " -> " + zoneName);
-
       try {
+        clearDataForDate(dateStr);
         processAndSave(dateStr, "HIST", accessToken, zoneId, zoneName);
       } catch (e) {
         console.error("❌ Error processing " + dateStr + " for " + zoneName + ": " + e.message);
       }
     }
 
-    // 3. Move back one day AFTER all zones are finished
-    lastDate.setDate(lastDate.getDate() - 1);
     props.setProperty("LAST_PROCESSED_DATE", Utilities.formatDate(lastDate, CONFIG.TIMEZONE, CONFIG.DATE_FORMAT));
+
+    // 3. Move forward one day AFTER all zones are finished
+    lastDate.setDate(lastDate.getDate() + 1);
   }
 }
 
@@ -98,6 +97,7 @@ function historicalSync() {
  * UPDATED CORE PROCESSING LOGIC (With Boundary Filtering)
  */
 function processAndSave(dateStr, mode, token, zoneId, zoneName) {
+  console.log("Fetching data for " + dateStr + " -> [" + zoneId + " / " + zoneName + "]");
   const data = fetchTadoData(dateStr, token, zoneId);
 
   // 1. Initial safety check
