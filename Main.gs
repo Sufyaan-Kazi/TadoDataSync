@@ -55,6 +55,7 @@ function historicalSync() {
     lastDate = new Date(limitDate.toDateString());
   } else {
     lastDate = new Date(lastDateStr);
+    lastDate.setDate(lastDate.getDate() + 1);
   }
   if (lastDate < limitDate) {
     lastDate = limitDate;
@@ -71,25 +72,32 @@ function historicalSync() {
 
     // Wipe any partial data for yesterday before we start
     const dateStr = Utilities.formatDate(lastDate, CONFIG.TIMEZONE, CONFIG.DATE_FORMAT);
+    clearDataForDate(dateStr);
+    //props.setProperty("LAST_PROCESSED_DATE", Utilities.formatDate(new Date(.lastDate.getTime() - 24 * 60 * 60 * 1000), CONFIG.TIMEZONE, CONFIG.DATE_FORMAT));
 
     // 2. INNER LOOP: Process every zone for this specific date (except Hot Water - Zone 0)
     for (let z = 1; z < zoneList.length; z++) {
-    //for (let z = 1; z < 2; z++) {
+      //for (let z = 1; z < 2; z++) {
       let zoneId = zoneList[z].id;
       let zoneName = zoneList[z].name;
 
       try {
-        clearDataForDate(dateStr);
         processAndSave(dateStr, "HIST", accessToken, zoneId, zoneName);
       } catch (e) {
         console.error("❌ Error processing " + dateStr + " for " + zoneName + ": " + e.message);
       }
     }
 
+    console.log("All zones processed for: " + lastDate.toDateString());
     props.setProperty("LAST_PROCESSED_DATE", Utilities.formatDate(lastDate, CONFIG.TIMEZONE, CONFIG.DATE_FORMAT));
 
     // 3. Move forward one day AFTER all zones are finished
     lastDate.setDate(lastDate.getDate() + 1);
+
+    if (lastDate.getTime() == new Date().getTime()) {
+      console.log("✅Historical data processed.")
+      break;
+    }
   }
 }
 
@@ -97,7 +105,7 @@ function historicalSync() {
  * UPDATED CORE PROCESSING LOGIC (With Boundary Filtering)
  */
 function processAndSave(dateStr, mode, token, zoneId, zoneName) {
-  console.log("Fetching data for " + dateStr + " -> [" + zoneId + " / " + zoneName + "]");
+  console.log("\tFetching data for " + dateStr + " -> [" + zoneId + " / " + zoneName + "]");
   const data = fetchTadoData(dateStr, token, zoneId);
 
   // 1. Initial safety check
