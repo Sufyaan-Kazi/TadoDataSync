@@ -4,7 +4,7 @@ const CONFIG = {
   CLIENT_ID: PropertiesService.getScriptProperties().getProperty("CLIENT_ID"),
   INITIAL_REFRESH_TOKEN: PropertiesService.getScriptProperties().getProperty("INITIAL_REFRESH_TOKEN"),
 
-  DAYS_PER_HISTORY_BATCH: 5, // ANYTHING FROM 10-30
+  DAYS_PER_HISTORY_BATCH: 7, // ANYTHING FROM 10-30
   TIMEZONE: "GMT+1",
   DATE_FORMAT: "yyyy-MM-dd",
   TIME_FORMAT: "HH:mm:ss"
@@ -48,6 +48,7 @@ function historicalSync() {
   const HISTORY_LIMIT_DATE = Utilities.formatDate(new Date(new Date().setDate(new Date().getDate() - CONFIG.DAYS_PER_HISTORY_BATCH)), "GMT+1", "yyyy-MM-dd");
   let lastDateStr = props.getProperty("LAST_PROCESSED_DATE");
   const limitDate = new Date(HISTORY_LIMIT_DATE);
+  const yesterday = new Date(new Date().getTime() - 24 * 60 * 60 * 1000);
   console.log("LAST_PROCESSED_DATE: " + lastDateStr + ", HISTORY_LIMIT_DATE:" + limitDate);
 
   let lastDate;
@@ -61,6 +62,11 @@ function historicalSync() {
     lastDate = limitDate;
   }
   //console.log("LAST_DATE: " + lastDate.toDateString());
+
+  if (lastDate > yesterday) {
+    console.log("✅Historical data processed.")
+    return;
+  }
 
   const accessToken = getAccessToken();
   const headers = { 'Authorization': 'Bearer ' + accessToken };
@@ -94,7 +100,7 @@ function historicalSync() {
     // 3. Move forward one day AFTER all zones are finished
     lastDate.setDate(lastDate.getDate() + 1);
 
-    if (lastDate.getTime() == new Date().getTime()) {
+    if (lastDate > yesterday) {
       console.log("✅Historical data processed.")
       break;
     }
