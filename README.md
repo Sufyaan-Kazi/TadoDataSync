@@ -1,5 +1,5 @@
-# TadoDataSync
-# 🌡️ Tado Smart Heating Data Sync: The Ultimate Guide
+# TadoDataSync - Multizone support
+# 🌡️ Tado Smart Heating Data Sync: The Ultimate Guide - with Multizone Support
 
 This project allows you to automatically capture every temperature change, boiler request, and weather fluctuation directly into a Google Spreadsheet.
 
