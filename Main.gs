@@ -35,7 +35,7 @@ function dailySync() {
     let zoneName = zoneList[i].name;
     //console.log("Zone: " + zoneId + " -> " + zoneName);
 
-    console.log("Starting dailySync for date: " + dateStr); // <--- ADDED THIS
+    //console.log("Starting dailySync for date: " + dateStr); // <--- ADDED THIS
     processAndSave(dateStr, "TOP", accessToken, zoneId, zoneName);
   }
 }
