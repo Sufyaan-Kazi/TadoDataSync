@@ -11,9 +11,28 @@ const CONFIG = {
 };
 
 /**
+ * Fetch todays data, can be used to get partial e.g. data so far today or the whole day depending on what time of day you run it
+ */
+function todaySync() {
+  const today = new Date(new Date().getTime());
+
+  dailySync(today);
+}
+
+/**
+ * Fetch all of yesterdays data
+ */
+function yesterdaySync() {
+  const today = new Date(new Date().getTime());
+  const yesterday = new Date(today.getTime() - 24 * 60 * 60 * 1000);
+
+  dailySync(yesterday);
+}
+
+/**
  * DAILY AUTOMATION
  */
-function dailySync() {
+function dailySync(dateToFetch) {
   // 1. The script gets the fresh access token
   const accessToken = getAccessToken();
 
@@ -23,19 +42,18 @@ function dailySync() {
   };
 
   const zoneList = getZones(`${CONFIG.HOME_ID}`, headers);
+  if(!dateToFetch){
+    dateToFetch = new Date(new Date().getTime());
+  }
 
-  // Wipe any partial data for yesterday before we start
-  const yesterday = new Date(new Date().getTime() - 24 * 60 * 60 * 1000);
-  const dateStr = Utilities.formatDate(yesterday, CONFIG.TIMEZONE, CONFIG.DATE_FORMAT);
+  const dateStr = Utilities.formatDate(dateToFetch, CONFIG.TIMEZONE, CONFIG.DATE_FORMAT);
   clearDataForDate(dateStr);
 
   //skip zone 0 (hot water)
   for (let i = 1; i < zoneList.length; i++) {
     let zoneId = zoneList[i].id;
     let zoneName = zoneList[i].name;
-    //console.log("Zone: " + zoneId + " -> " + zoneName);
 
-    //console.log("Starting dailySync for date: " + dateStr); // <--- ADDED THIS
     processAndSave(dateStr, "TOP", accessToken, zoneId, zoneName);
   }
 }
