@@ -3,7 +3,7 @@
 
 > **Acknowledgment:** This project is a multi-zone fork of the original work by [theotocopulitos/TadoDataSync](https://github.com/theotocopulitos/TadoDataSync).
 
-This project allows you to automatically capture every temperature change, boiler request, and weather fluctuation directly into a Google Spreadsheet.
+This project allows you to automatically capture every temperature change, boiler request, and weather fluctuation directly into a Google Sheet.
 
 ![Measured Data Dashboard](images/dashboard_sample.png)
 
@@ -72,7 +72,7 @@ The script needs to know which specific house to monitor.
 
 Before setting the automatic timers, verify that everything is configured correctly:
 
-1. **Test Daily Sync:** In the toolbar, select `dailySync` and click **Run**. Check your spreadsheet; you should see yesterday's data appearing in the four new tabs.
+1. **Test Daily Sync:** In the toolbar, select `todaySync` and click **Run**. Check your spreadsheet; you should see yesterday's data appearing in the four new tabs.
 2. **Test Historical Sync:** In the toolbar, select `historicalSync` and click **Run**. Wait for it to finish. You should see about 10–20 days of past data added to the bottom of your sheets.
 3. **Check for Errors:** If any function fails, double-check your `HOME_ID` and `INITIAL_REFRESH_TOKEN` in `Main.gs`.
 
@@ -85,7 +85,7 @@ Once the manual tests are successful, set up two "alarms" (Triggers) to make it 
 1. **Daily Sync (Today's Data):**
    - Click the **Alarm Clock icon** (Triggers) in the left sidebar.
    - Click **+ Add Trigger**.
-   - Function: `dailySync` | Source: `Time-driven` | Type: `Day timer` | Time: `1am to 2am`.
+   - Function: `yesterdaySync` | Source: `Time-driven` | Type: `Day timer` | Time: `1am to 2am`.
 
 2. **Historical Sync (The Past):**
    - Click **+ Add Trigger**.
