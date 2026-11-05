@@ -1,5 +1,4 @@
-# TadoDataSync - Multizone support
-# 🌡️ Tado Multi Zone Smart Heating Data Sync: The Ultimate Guide - with Multizone Support
+# 🌡️ Tado Multi-Zone Smart Heating Data Sync (Enhanced Analytics)
 
 > **Acknowledgment:** This project is a multi-zone fork of the original work by [theotocopulitos/TadoDataSync](https://github.com/theotocopulitos/TadoDataSync).
 
@@ -51,20 +50,23 @@ Since this is a custom script, Google and Tado will ask for explicit permission.
 5. Return to the Google Script log. Copy the `device_code` (e.g., `_Xy7...`).
 
 ### Step C: Saving the "Master Key" (Refresh Token)
-1. In `Auth.gs`, find `DEVICE_CODE: "PASTE_YOUR_CODE_HERE"` at the top.
-2. **Paste your code** inside the quotes.
-3. Select the function `finalizeTokenRequest` in the toolbar and click **Run**.
-4. The log will show a **✅ SUCCESS!** message and a long **Refresh Token**.
-5. **Copy that token** and paste it into `Main.gs`, under `INITIAL_REFRESH_TOKEN`.
+1. In `Auth.gs`, find `DEVICE_CODE` at the top and paste your code from Step B inside the quotes.
+2. Select the function `finalizeTokenRequest` in the toolbar and click **Run**.
+3. The log will show a **✅ SUCCESS!** message and a long **Refresh Token**. Copy that token.
+4. Click the **Gear icon** (Project Settings) on the left sidebar.
+5. Scroll down to **Script properties** and click **Add script property**.
+6. Enter `INITIAL_REFRESH_TOKEN` as the Property, paste your token as the Value, and click **Save script properties**.
 
 ---
 
 ## 🏡 Phase 3: Finding your Home ID
 
 The script needs to know which specific house to monitor.
-1. In the toolbar, select `discoverHomeId` and click **Run**.
-2. The log will show: `🏡 Home: [Your Home Name] | ID: 123456`.
-3. Copy the numeric ID and paste it into `Main.gs` under `HOME_ID`.
+1. Return to the code editor (`<>` icon). In the toolbar, select `discoverHomeId` and click **Run**.
+2. The log will show: `🏡 Home: [Your Home Name] | ID: 123456`. Copy the numeric ID.
+3. Go back to the **Gear icon** (Project Settings) > **Script properties**.
+4. Click **Add script property**, enter `HOME_ID` as the Property, paste the numeric ID as the Value, and click **Save**.
+*(Note: Ensure your `CLIENT_ID` is also saved here in Script properties if you haven't hardcoded it).*
 
 ---
 
@@ -72,9 +74,10 @@ The script needs to know which specific house to monitor.
 
 Before setting the automatic timers, verify that everything is configured correctly:
 
-1. **Test Daily Sync:** In the toolbar, select `todaySync` and click **Run**. Check your spreadsheet; you should see yesterday's data appearing in the four new tabs.
-2. **Test Historical Sync:** In the toolbar, select `historicalSync` and click **Run**. Wait for it to finish. You should see about 10–20 days of past data added to the bottom of your sheets.
-3. **Check for Errors:** If any function fails, double-check your `HOME_ID` and `INITIAL_REFRESH_TOKEN` in `Main.gs`.
+1. **Test Midday Sync:** In the toolbar, select `todaySync` and click **Run**. Check your spreadsheet; you should see data from earlier today appearing in the four new tabs.
+2. **Test Daily Sync:** In the toolbar, select `yesterdaySync` and click **Run**. Check your spreadsheet; you should see yesterday's data appearing in the four new tabs.
+3. **Test Historical Sync:** In the toolbar, select `historicalSync` and click **Run**. Wait for it to finish. You should see about 10–20 days of past data added to the bottom of your sheets.
+4. **Check for Errors:** If any function fails, double-check your `HOME_ID` and `INITIAL_REFRESH_TOKEN` in `Main.gs`.
 
 ---
 
@@ -82,10 +85,11 @@ Before setting the automatic timers, verify that everything is configured correc
 
 Once the manual tests are successful, set up two "alarms" (Triggers) to make it automatic:
 
-1. **Daily Sync (Today's Data):**
+1. **Daily Sync (Yesterday's Data):**
    - Click the **Alarm Clock icon** (Triggers) in the left sidebar.
    - Click **+ Add Trigger**.
    - Function: `yesterdaySync` | Source: `Time-driven` | Type: `Day timer` | Time: `1am to 2am`.
+   - (Note: It is crucial to use yesterdaySync here so it safely grabs the entire previous 24-hour block after midnight)
 
 2. **Historical Sync (The Past):**
    - Click **+ Add Trigger**.
@@ -117,10 +121,16 @@ If you want the script to "forget" its progress and restart the historical recov
 1.  **Via Code:** Run the `resetHistoryProgress` function from the Apps Script editor.
 2.  **Via Settings:** - Click the **Gear icon** (Project Settings).
     - Scroll to **Script Properties**.
-    - Delete the entry for `LAST_RECOVERED_DATE`.
+    - Delete the entry for `LAST_PROCESSED_DATE`.
 
 ### Handling Duplicates & Sorting
-The script is now "Smart." It automatically:
-- **Filters Boundaries:** Skips data points from the previous day that Tado includes as buffers.
-- **Prevents Duplicates:** Checks if a Date/Time already exists before writing.
-- **Auto-Sorts:** Keeps your sheets in perfect chronological order regardless of when data is synced.
+The script is now highly optimized to keep your spreadsheet fast and clean:
+- **Idle Filtering:** Automatically drops "NONE" heat demand periods, keeping the spreadsheet lightweight.
+- **Block-Wipe Prevention:** Uses a custom `clearDataForDate` mechanism to cleanly wipe a specific day's data right before syncing it, ensuring duplicate blocks are never stacked.
+- **Auto-Sorts:** Keeps your sheets in perfect chronological order (newest at the top) regardless of when historical or daily data is synced.
+
+### 🧹 Universal Cleanup Tool
+If you ever suspect your sheet has duplicate data (e.g., from manual testing or older script versions), you can run a full sweep:
+1. Open the Apps Script editor.
+2. Select the `cleanAllSheetsEffective` function from the toolbar and click **Run**.
+3. The script will scan all 4 tabs, remove any duplicate rows based on exact timestamps, and perfectly re-sort your data.
