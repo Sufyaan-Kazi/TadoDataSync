@@ -267,7 +267,7 @@ function getAccessToken() {
 }
 
 function resetHistoryProgress() {
-  PropertiesService.getScriptProperties().deleteProperty("LAST_RECOVERED_DATE");
+  PropertiesService.getScriptProperties().deleteProperty("LAST_PROCESSED_DATE");
   console.log("✅ History progress has been reset. Next run will start from your current target date.");
 }
 
