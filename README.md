@@ -1,7 +1,11 @@
 # TadoDataSync - Multizone support
-# 🌡️ Tado Smart Heating Data Sync: The Ultimate Guide - with Multizone Support
+# 🌡️ Tado Multi Zone Smart Heating Data Sync: The Ultimate Guide - with Multizone Support
+
+> **Acknowledgment:** This project is a multi-zone fork of the original work by [theotocopulitos/TadoDataSync](https://github.com/theotocopulitos/TadoDataSync).
 
 This project allows you to automatically capture every temperature change, boiler request, and weather fluctuation directly into a Google Spreadsheet.
+
+![Measured Data Dashboard](images/dashboard.png)
 
 Note: This is a fork of the original project https://github.com/theotocopulitos/TadoDataSync, where I have added multi-zone support and translated error messages from Spanish to English. Many thanks theotocopulitos for the original work in creating the base script :)
 
