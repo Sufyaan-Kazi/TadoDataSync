@@ -12,13 +12,40 @@ function saveToSheet(ss, name, headers, newRows) {
   let filteredRows = newRows;
 
   if (lastRow > 1) {
-    // Weather uses Col 1 (FROM) for duplicates, the others use Col 3 (DATE/FROM)
-    const checkCol = (name === "Weather") ? 1 : 3;
-    const existingData = sheet.getRange(2, checkCol, lastRow - 1, 1).getValues();
-    const existingKeys = new Set(existingData.map(r => String(r[0])));
-    filteredRows = newRows.filter(r => !existingKeys.has(String(r[checkCol - 1])));
+    // Read just the first 4 columns (A:D) to build fast lookup keys
+    const existingData = sheet.getRange(2, 1, lastRow - 1, 4).getValues();
+    const existingKeys = new Set();
+
+    existingData.forEach(r => {
+      // Handle Google Sheets automatically casting strings to Date objects
+      let dateStr = r[2] instanceof Date ? Utilities.formatDate(r[2], CONFIG.TIMEZONE, name === "Measured Data" ? "yyyy-MM-dd" : "yyyy-MM-dd HH:mm:ss") : String(r[2]);
+      let timeStr = r[3] instanceof Date ? Utilities.formatDate(r[3], CONFIG.TIMEZONE, "HH:mm:ss") : String(r[3]);
+      let wDateStr = r[0] instanceof Date ? Utilities.formatDate(r[0], CONFIG.TIMEZONE, "yyyy-MM-dd HH:mm:ss") : String(r[0]);
+
+      // Build unique composite keys based on the sheet type
+      if (name === "Measured Data") {
+        existingKeys.add(`${r[0]}|${dateStr}|${timeStr}`); // ZoneID | Date | Time
+      } else if (name === "Settings" || name === "Call For Heat") {
+        existingKeys.add(`${r[0]}|${dateStr}`); // ZoneID | From
+      } else if (name === "Weather") {
+        existingKeys.add(`${wDateStr}`); // From
+      }
+    });
+
+    // Filter out any fetched rows that already exist in the sheet
+    filteredRows = newRows.filter(r => {
+      if (name === "Measured Data") {
+        return !existingKeys.has(`${r[0]}|${r[2]}|${r[3]}`);
+      } else if (name === "Settings" || name === "Call For Heat") {
+        return !existingKeys.has(`${r[0]}|${r[2]}`);
+      } else if (name === "Weather") {
+        return !existingKeys.has(`${r[0]}`);
+      }
+      return true;
+    });
   }
 
+  // Only append if there is truly new data
   if (filteredRows.length > 0) {
     sheet.getRange(sheet.getLastRow() + 1, 1, filteredRows.length, filteredRows[0].length).setValues(filteredRows);
 
