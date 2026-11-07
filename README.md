@@ -1,6 +1,8 @@
 # 🌡️ Tado Multi-Zone Smart Heating Data Sync (Enhanced Analytics)
 ![AI Assisted](https://img.shields.io/badge/🤖_AI-Assisted-blue.svg)
 
+> **Acknowledgments:** This project is an enhanced, highly-optimized fork inspired by the excellent foundational work of [theotocopulitos/TadoDataSync](https://github.com/theotocopulitos/TadoDataSync). This version has been heavily re-architected with enterprise-grade batch processing to bypass Google Sheets timeouts, in-memory deduplication, strict error validation, and seamless integration with Octopus Energy tariffs.
+
 This project allows you to automatically capture every temperature change, boiler request, and weather fluctuation directly into a Google Sheet.
 
 ![Measured Data Dashboard](images/dashboard_sample.png)
